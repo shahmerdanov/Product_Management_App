@@ -6,16 +6,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
-public class ProductServiceImpl implements ProductService{
+public class ProductServiceImpl implements ProductService {
+
+    private final ProductRepository productRepo;
 
     @Autowired
-    private ProductRepository productRepo;
+    public ProductServiceImpl(ProductRepository productRepo) {
+        this.productRepo = productRepo;
+    }
 
     @Override
     public Product saveProduct(Product product) {
-
         return productRepo.save(product);
     }
 
@@ -26,31 +30,32 @@ public class ProductServiceImpl implements ProductService{
 
     @Override
     public Product getProductById(Integer id) {
-        return productRepo.findById(id).get();
+        return productRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + id));
     }
 
     @Override
     public String deleteProduct(Integer id) {
-        Product product = productRepo.findById(id).get();
+        Optional<Product> optionalProduct = productRepo.findById(id);
 
-        if (product != null) {
-            productRepo.delete(product);
-            return "Product Delete Successfully";
+        if (optionalProduct.isPresent()) {
+            productRepo.delete(optionalProduct.get());
+            return "Product deleted successfully";
         }
 
-        return "Something wrong on server";
+        return "Product not found";
     }
 
     @Override
-    public Product editProduct(Product p, Integer id) {
-
-        Product oldProduct = productRepo.findById(id).get();
-
-        oldProduct.setProductName(p.getProductName());
-        oldProduct.setDescription(p.getDescription());
-        oldProduct.setPrice(p.getPrice());
-        oldProduct.setStatus(p.getStatus());
-
-        return productRepo.save(oldProduct);
+    public Product editProduct(Product newProduct, Integer id) {
+        return productRepo.findById(id)
+                .map(oldProduct -> {
+                    oldProduct.setProductName(newProduct.getProductName());
+                    oldProduct.setDescription(newProduct.getDescription());
+                    oldProduct.setPrice(newProduct.getPrice());
+                    oldProduct.setStatus(newProduct.getStatus());
+                    return productRepo.save(oldProduct);
+                })
+                .orElseThrow(() -> new IllegalArgumentException("Product not found with id: " + id));
     }
 }
